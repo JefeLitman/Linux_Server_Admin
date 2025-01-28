@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Version 1.0
+# Made by: Edgar RP
+# Updated: 2025_01_28 (AAAA_MM_DD)
+#Script to remove user data stored, umount the user volume and destroy with zfs
+
+#To use this command, it should look like: rm_user_dir <zfs_pool> <usermane>
+
+if [ -z "$1" ] || [ -z "$2" ] || [ "$EUID" -ne 0 ]; then
+    echo "usage: rm_user_dir <zfs_pool> <username> "
+    echo "CAUTION! Only work for root user"
+    echo "  <zfs_pool> - The name of zfs pool where the user have his/her volume"
+    echo "  <username> - The name of your user in lowercase"
+    exit 1
+else
+    echo "Unistalling rootless docker inside the user $2"
+    # A script is necessary to uninstall the rootless docker inside the user using XDG and DBUS session vars
+    sleep 3
+    echo "Stopping all processes from user $2"
+    killall -u $2 -v
+    sleep 3
+    echo "Deleting the docker data of user $2"
+    runuser -l $2 -c "/usr/bin/rootlesskit rm -rf /home/$2/.local/share/docker"
+    sleep 3
+    echo "Deleting the user $2 from the system"
+    deluser $2
+    sleep 3
+    echo "Deleting the data inside the user $2 folder"
+    find "/home/$2/" -mindepth 1 -maxdepth 1 -exec rm -rvf {} \;
+    sleep 3
+    echo "Listing files inside user $2 folder"
+    ls -lah "/home/$2"
+    sleep 8
+    echo "Unmounting the zfs volume for user $2"
+    umount -v "/dev/zvol/$1/$2_volume"
+    sleep 3
+    echo "Destroying the zfs volume for user $2"
+    zfs destroy "$1/$2_volume"
+    sleep 3
+    echo "Removing the remaining folder inside /home"
+    rm -rvf /home/$2
+    sleep 3
+    echo "Success, now remove the entry in /etc/fstab of the user"
+    exit 0
+fi
