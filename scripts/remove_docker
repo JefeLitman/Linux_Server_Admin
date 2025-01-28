@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Version 0.1
+# Made by: Edgar RP
+# Updated: 2025_01_28 (AAAA_MM_DD)
+#Script to uninstall docker rootless installation from runuser command in root, this should be run by the user
+
+#To use this command, it should look like: remove_docker
+
+XDG_RUNTIME_DIR="/run/user/$(id -u)"
+# Path taken from any user in a ubuntu installation, may vary between operative systems
+DBUS_SESSION_BUS_ADDRESS="unix:path/run/user/$(id -u)/bus"
+
+dockerd-rootless-setuptool.sh install
+echo "export PATH=/usr/bin:$PATH" >> /home/$(whoami)/.bashrc
+echo "export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock" >> /home/$(whoami)/.bashrc
+
+systemctl --user enable docker
+
+if [ -z "$1" ] || [ "$EUID" -eq 0 ]; then
+    echo "usage: remove_docker <username> "
+    echo "CAUTION! Only work for non-root users"
+    echo "  <username> - The name of the user in lowercase to remove docker rootless installation"
+    exit 1
+else
+    echo "Stopping all user processes"
+    killall -u $2 -v
+    sleep 3
+    echo "Deleting the docker data of the user $2"
+    runuser -l $2 -c "/usr/bin/rootlesskit rm -rf /home/$2/.local/share/docker"
+    sleep 3
+    echo "Deleting the data inside the user $2 folder"
+    find "/home/$2/" -mindepth 1 -maxdepth 1 -exec rm -rvf {} \;
+    sleep 3
+    echo "Listing files inside user $2 folder"
+    ls -lah "/home/$2"
+    sleep 8
+    echo "Unmounting the zfs volume for user $2"
+    umount -v "/dev/zvol/$1/$2_volume"
+    sleep 3
+    echo "Destroying the zfs volume for user $2"
+    zfs destroy "$1/$2_volume"
+    sleep 3
+    echo "Removing the remaining folder inside /home"
+    rm -rvf /home/$2
+    sleep 3
+    echo "Success, now remove the entry in /etc/fstab of the user"
+    exit 0
+fi
