@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Version 1.0
+# Made by: Edgar RP
+# Updated: 2025_01_29 (AAAA_MM_DD)
+#Script to check if DEV LOC variable is correctly set into the device, normally is hidden given the _ at beggining of file and should already be placed under /usr/local/bin
+
+#To use this command, it should look like: _check_dev <device_type>
+if [ -z "$1" ]; then
+    echo "usage: _check_dev <device_type>"
+    echo "  <device_type> - The type of device where the script is running, it should be 'cluster', 'proxy' or 'workstation' strings only (case-sensitive)"
+    exit 1
+else
+    if [ "$1" == "cluster" ] || [ "$1" == "proxy" ] || [ "$1" == "workstation" ]; then
+        exit 0
+    else
+        echo "The device type is not correctly set, it should be 'cluster', 'proxy' or 'workstation' strings only"
+        exit 1
+    fi
+fi
