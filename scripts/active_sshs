@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Version 1.0
+# Made by: Edgar RP
+# Updated: 2025_01_29 (AAAA_MM_DD)
+#Script to list all the active ssh sessions from any user in the device
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'cluster', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: active_sshs
+if [ "$EUID" < 0 ] ; then
+    echo "ERROR: It is running with an effective uid negative?"
+    exit 1
+else
+    echo "Listing all the active sshs sessions in the $DEV_LOC device"
+    ps faux | grep sshd
+    exit 0
+fi
