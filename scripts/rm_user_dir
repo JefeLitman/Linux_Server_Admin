@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Version 1.0
+# Version 1.1
 # Made by: Edgar RP
-# Updated: 2025_01_28 (AAAA_MM_DD)
-#Script to remove user data stored, umount the user volume and destroy with zfs
+# Updated: 2025_02_11 (AAAA_MM_DD)
+# Script to remove a user from the device, their data, umount the user volume and destroy with zfs
 
 #To use this command, it should look like: rm_user_dir <zfs_pool> <usermane>
 
@@ -14,14 +14,21 @@ if [ -z "$1" ] || [ -z "$2" ] || [ "$EUID" -ne 0 ]; then
     echo "  <username> - The name of your user in lowercase"
     exit 1
 else
+    # Checking if a ssh key by default was created for root user
+    if ! test -f /root/.ssh/keys/default; then
+        echo "ERROR: The default ssh key was not created for root user"
+        exit 1
+    fi
+    # Adding the keys to authorized_keys file and ssh folder must exists
+    cat /root/.ssh/keys/default.pub >> /home/$2/.ssh/authorized_keys
     echo "Unistalling rootless docker inside the user $2"
-    # A script is necessary to uninstall the rootless docker inside the user using XDG and DBUS session vars
+    ssh $2@localhost -i /root/.ssh/keys/default 'dockerd-rootless-setuptool.sh uninstall'
+    sleep 3
+    echo "Deleting the docker data of user $2"
+    ssh $2@localhost -i /root/.ssh/keys/default '/usr/bin/rootlesskit rm -rf ~/.local/share/docker'
     sleep 3
     echo "Stopping all processes from user $2"
     killall -u $2 -v
-    sleep 3
-    echo "Deleting the docker data of user $2"
-    runuser -l $2 -c "/usr/bin/rootlesskit rm -rf /home/$2/.local/share/docker"
     sleep 3
     echo "Deleting the user $2 from the system"
     deluser $2
