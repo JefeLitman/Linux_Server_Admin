@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Version 1.0
+# Made by: Edgar RP
+# Updated: 2025_02_13 (AAAA_MM_DD)
+# Script to add a new user to the device with all the permissions and folders and default configurations
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: new_user <zfs_pool> <username> <size>
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ "$EUID" -ne 0 ]; then
+    echo "usage: new_user <zfs_pool> <username> <size>"
+    echo "CAUTION! Only work for root user"
+    echo "  <zfs_pool> - The name of zfs pool where the user have his/her home folder"
+    echo "  <username> - The name of your user in lowercase"
+    echo "  <size> - The size with acronyms for the user, e.g 200G"
+    exit 1
+else
+    if [ "$DEV_LOC" == "proxy" ]; then
+        echo "Creating ZFS Dataset with quota of $3"
+        zfs create -o mountpoint=/home/$2 -o quota=$3 $1/$2_volume
+        echo "Waiting for ZFS Dataset to be detected... (5s)"
+        sleep 5
+    fi
+    if [ "$DEV_LOC" == "server" ] || [ "$DEV_LOC" == "workstation" ]; then
+        echo "Creating ZFS Volume with quota of $3"
+        zfs create -V $3 -b 4096 $1/$2_volume
+        echo "Waiting for ZFS Volume to be created and detected... (5s)"
+        sleep 5
+        echo "Formating ZFS Volume as ext2 to enable the use of docker"
+        mkfs.ext2 /dev/zvol/$1/$2_volume
+        echo "Creating home folder of user $2 and mounting the ZFS Volume on it"
+        mkdir -v /home/$2
+        mount -v /dev/zvol/$1/$2_volume /home/$2
+    fi
+    echo "Creating the username $2..."
+    adduser $2
+    cp -av /etc/skel/. /home/$2
+    echo 'echo -e "Bienvenido de nuevo ¡\x1B[01;95m$(whoami)\x1B[0m! \n"' >> /home/$2/.bashrc
+    echo "Creating the ssh folder and authorized_keys file..."
+    mkdir -v /home/$2/.ssh
+    echo "" > /home/$2/.ssh/authorized_keys
+    chmod -Rv 700 /home/$2/.ssh
+    echo "Setting permission to the user in their home folder and files"
+    chown -Rv $2:$2 /home/$2
+    if [ "$DEV_LOC" == "proxy" ]; then
+        echo "Success, now modify sshd_config file to enable ssh-key only access for user $2"
+    fi
+    if [ "$DEV_LOC" == "server" ] || [ "$DEV_LOC" == "workstation" ]; then
+        _check_ssh # Checking if the ssh for root user is configured for the device locally
+        # Adding the keys to authorized_keys file and ssh folder must exists
+        cat /root/.ssh/keys/default.pub > /home/$2/.ssh/authorized_keys
+        echo "Installing the docker inside the user"
+        ssh locally -l $2 'install_docker'
+        sleep 3
+        ssh locally -l $2 'docker info | grep "Storage*"'
+        ssh locally -l $2 'docker ps -a'
+        sleep 3
+        ssh locally -l $2 'systemctl --user status docker'
+        sleep 3
+        echo "" > /home/$2/.ssh/authorized_keys
+        echo "Enabling lingering to permit docker of user run on startup"
+        loginctl enable-linger $2
+        echo "Forcing the password to expire and listing the user volume information for /etc/fstab"
+        passwd -e $2
+        echo ""
+        blkid /dev/zvol/$1/$2_volume
+        echo ""
+        echo "Success, now add the volume of user $2 into /etc/fstab to let the user access to the device!"
+    fi
+    exit 0
