@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.2
+# Version 1.2.1
 # Made by: Edgar RP
 # Updated: 2025_02_13 (AAAA_MM_DD)
 # Script to remove a user from the device, their data, umount the user volume and destroy with zfs
@@ -29,7 +29,7 @@ else
         sleep 3
     fi
     echo "Stopping all processes from user $2"
-    killall -u $2 -v
+    bash -c "killall -u $2 -v; exit 0" # Wrapping kill all when there is none process running for the user
     sleep 3
     echo "Deleting the user $2 from the system"
     deluser $2
