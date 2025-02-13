@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Version 1.0
+# Made by: Edgar RP
+# Updated: 2025_02_13 (AAAA_MM_DD)
+#Script to check if /root/.ssh is configured correctly by having a default ssh-key and config file by root user. This file only works for root user, normally is hidden given the _ at beggining of file and should already be placed under /usr/local/bin
+
+#To use this command, it should look like: _check_ssh
+if [ "$EUID" -ne 0 ]; then
+    echo "usage: _check_ssh"
+    echo "CAUTION! Only work for root user"
+    exit 1
+else
+    if ! test -f /root/.ssh/keys/default; then
+        echo "ERROR: The default ssh key was not created for root user"
+        exit 1
+    fi
+    if ! test -f /root/.ssh/config; then
+        echo "ERROR: The default ssh config was not created and configured for root user"
+        exit 1
+    fi
+    exit 0
+fi
