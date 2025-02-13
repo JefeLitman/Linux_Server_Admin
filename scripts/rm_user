@@ -1,32 +1,33 @@
 #!/bin/bash
 
-# Version 1.1
+# Version 1.2
 # Made by: Edgar RP
-# Updated: 2025_02_11 (AAAA_MM_DD)
+# Updated: 2025_02_13 (AAAA_MM_DD)
 # Script to remove a user from the device, their data, umount the user volume and destroy with zfs
 
-#To use this command, it should look like: rm_user_dir <zfs_pool> <usermane>
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
 
+#To use this command, it should look like: rm_user <zfs_pool> <username>
 if [ -z "$1" ] || [ -z "$2" ] || [ "$EUID" -ne 0 ]; then
-    echo "usage: rm_user_dir <zfs_pool> <username> "
+    echo "usage: rm_user <zfs_pool> <username> "
     echo "CAUTION! Only work for root user"
     echo "  <zfs_pool> - The name of zfs pool where the user have his/her volume"
     echo "  <username> - The name of your user in lowercase"
     exit 1
 else
-    # Checking if a ssh key by default was created for root user
-    if ! test -f /root/.ssh/keys/default; then
-        echo "ERROR: The default ssh key was not created for root user"
-        exit 1
+    if [ "$DEV_LOC" == "server" ] || [ "$DEV_LOC" == "workstation" ]; then
+        _check_ssh # Checking if the ssh for root user is configured for the device locally
+        # Adding the keys to authorized_keys file and ssh folder must exists
+        cat /root/.ssh/keys/default.pub >> /home/$2/.ssh/authorized_keys
+        echo "Unistalling rootless docker inside the user $2"
+        ssh locally -l $2 'dockerd-rootless-setuptool.sh uninstall'
+        sleep 3
+        echo "Deleting the docker data of user $2"
+        ssh locally -l $2 '/usr/bin/rootlesskit rm -rf ~/.local/share/docker'
+        sleep 3
     fi
-    # Adding the keys to authorized_keys file and ssh folder must exists
-    cat /root/.ssh/keys/default.pub >> /home/$2/.ssh/authorized_keys
-    echo "Unistalling rootless docker inside the user $2"
-    ssh $2@localhost -i /root/.ssh/keys/default 'dockerd-rootless-setuptool.sh uninstall'
-    sleep 3
-    echo "Deleting the docker data of user $2"
-    ssh $2@localhost -i /root/.ssh/keys/default '/usr/bin/rootlesskit rm -rf ~/.local/share/docker'
-    sleep 3
     echo "Stopping all processes from user $2"
     killall -u $2 -v
     sleep 3
@@ -39,15 +40,25 @@ else
     echo "Listing files inside user $2 folder"
     ls -lah "/home/$2"
     sleep 8
-    echo "Unmounting the zfs volume for user $2"
-    umount -v "/dev/zvol/$1/$2_volume"
-    sleep 3
-    echo "Destroying the zfs volume for user $2"
-    zfs destroy "$1/$2_volume"
+    if [ "$DEV_LOC" == "proxy" ]; then
+        echo "Destroying the zfs dataset for user $2"
+    fi
+    if [ "$DEV_LOC" == "server" ] || [ "$DEV_LOC" == "workstation" ]; then
+        echo "Unmounting the zfs volume for user $2"
+        umount -v "/dev/zvol/$1/$2_volume"
+        sleep 3
+        echo "Destroying the zfs volume for user $2"
+    fi
+    zfs destroy -v "$1/$2_volume"
     sleep 3
     echo "Removing the remaining folder inside /home"
     rm -rvf /home/$2
     sleep 3
-    echo "Success, now remove the entry in /etc/fstab of the user"
+    if [ "$DEV_LOC" == "proxy" ]; then
+        echo "Success, the user $2 was removed from the device"
+    fi
+    if [ "$DEV_LOC" == "server" ] || [ "$DEV_LOC" == "workstation" ]; then
+        echo "Success, now remove the entry in /etc/fstab of the user $2"
+    fi
     exit 0
 fi
