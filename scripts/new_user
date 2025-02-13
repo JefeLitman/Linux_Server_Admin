@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.0
+# Version 1.0.1
 # Made by: Edgar RP
 # Updated: 2025_02_13 (AAAA_MM_DD)
 # Script to add a new user to the device with all the permissions and folders and default configurations
@@ -71,3 +71,4 @@ else
         echo "Success, now add the volume of user $2 into /etc/fstab to let the user access to the device!"
     fi
     exit 0
+fi
