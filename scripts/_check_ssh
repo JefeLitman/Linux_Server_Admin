@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.0
+# Version 1.0.1
 # Made by: Edgar RP
 # Updated: 2025_02_13 (AAAA_MM_DD)
 #Script to check if /root/.ssh is configured correctly by having a default ssh-key and config file by root user. This file only works for root user, normally is hidden given the _ at beggining of file and should already be placed under /usr/local/bin
@@ -16,7 +16,7 @@ else
         exit 1
     fi
     if ! test -f /root/.ssh/config; then
-        echo "ERROR: The default ssh config was not created and configured for root user"
+        echo "ERROR: The default ssh config was not created and configured for root user with locally host"
         exit 1
     fi
     exit 0
