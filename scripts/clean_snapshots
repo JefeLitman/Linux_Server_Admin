@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Version 1.2
+# Made by: Edgar RP
+# Updated: 2025_02_19 (AAAA_MM_DD)
+# Script to remove all the zfs snapshots (except the last one) in the system
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: clean_snapshots
+if [ "$EUID" -ne 0 ]; then
+    echo "usage: clean_snapshots"
+    echo "CAUTION! Only work for root user"
+    exit 1
+else
+    echo "Listing the snapshots in the zfs system:"
+    # The snapshots are taken from bpool/BOOT dataset because is where the snapshots are generated after upgrading the system and the other update regarding these snapshots
+    zfs list -r -t snapshot -o name,used,referenced,creation bpool/BOOT | tail -n+2 | cut -d ' ' -f 1
+    SNAPS=$(zfs list -r -t snapshot -o name,used,referenced,creation bpool/BOOT | tail -n+2 | head -n-1 | cut -d '@' -f 2 | cut -d ' ' -f 1 | cut -d '_' -f 2)
+    SNAPS_ARR=($SNAPS)
+    len=${#SNAPS_ARR[@]}
+    if [ "$len" -gt 1 ]; then
+        echo "The quantity of snapshots in the system to delete will be the $len oldest snapshots: $SNAPS"
+        echo ""
+        sleep 5
+        for (( snap_id=0; snap_id<$len; snap_id++ ))
+        do
+            echo "Removing the ${SNAPS_ARR[$snap_id]} snapshots in the system"
+            zsysctl state remove --system ${SNAPS_ARR[$snap_id]}
+        done
+        echo ""
+        echo "The snapshots were removed successfully"
+    else
+        ((len+=1))
+        echo ""
+        echo "There is only $len snapshot in zfs system, so nothing were deleted."
+    fi
+    exit 0
+fi
