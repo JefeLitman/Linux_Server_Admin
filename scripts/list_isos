@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Version 1.2
+# Made by: Edgar RP
+# Updated: 2025_02_19 (AAAA_MM_DD)
+#Script to list all the docker images from the user, except root
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: list_isos
+if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" == "proxy" ]; then
+    echo "CAUTION! Only work for user different than root user and is not enabled for proxy devices"
+    exit 1
+else
+    echo "Listing all the docker images from user $USER"
+    docker image ls
+    exit 0
+fi
