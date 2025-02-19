@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Version 1.2
+# Made by: Edgar RP
+# Updated: 2025_02_19 (AAAA_MM_DD)
+# Script to change and update and force changing the password of any user for any device
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: udt_pass <username>
+if [ -z "$1" ] || [ "$EUID" -ne 0 ]; then
+    echo "usage: udt_pass <username>"
+    echo "CAUTION! Only work for root user"
+    echo "  <username> - The name of user to update the password."
+    exit 1
+else
+    echo "Changing the password for user $1..."
+    passwd $1
+    echo "Setting password expiration to force user $1 to change it..."
+    passwd -e $1
+    exit 0
+fi
