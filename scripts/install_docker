@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Version 1.2
+# Made by: Edgar RP
+# Updated: 2025_02_19 (AAAA_MM_DD)
+#Script to install rootless docker toolkit in any user of the device, except root
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: install_docker
+if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" == "proxy" ]; then
+    echo "CAUTION! Only work for user different than root user and is not enabled for proxy devices"
+    exit 1
+else
+    echo "Installing docker rootless service in user $USER"
+    dockerd-rootless-setuptool.sh install
+    echo "export DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock" >> /home/$(whoami)/.bashrc
+    systemctl --user enable docker
+    echo "Success, now you have to log out from terminal and open a new one tp start using rootless docker."
+    exit 0
+fi
