@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.0.1
+# Version 1.1.0
 # Made by: Edgar RP
 # Updated: 2025_01_29 (AAAA_MM_DD)
 #Script to list all the active containers from any user, except root
@@ -10,7 +10,7 @@ DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' 
 _check_dev "$DEV_LOC" # Checking if the device type is correctly set
 
 #To use this command, it should look like: active_dockers
-if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" -eq "proxy" ]; then
+if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" == "proxy" ]; then
     echo "CAUTION! Only work for user different than root user and is not enabled for proxy devices"
     exit 1
 else
