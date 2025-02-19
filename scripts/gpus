@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Version 1.2.0
+# Made by: Edgar RP
+# Updated: 2025_02_19 (AAAA_MM_DD)
+#Script to show the Nvidia GPUs usage
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: gpus
+if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" == "proxy" ]; then
+    echo "CAUTION! Only work for user different than root user and is not enabled for proxy devices"
+    exit 1
+else
+    echo "The gpus usage will be shown in 5 seconds. To get out of this view, press 'Ctrl + C'"
+    sleep 5
+    watch -n1 nvidia-smi
+    exit 0
+fi
