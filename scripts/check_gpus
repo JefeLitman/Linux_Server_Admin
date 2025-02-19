@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Version 1.2
+# Made by: Santiago Duitama & Edgar RP
+# Updated: 2025_02_19 (AAAA_MM_DD)
+# Script to list the current users using a GPU and the memory occupied
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+#To use this command, it should look like: check_gpus
+if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" == "proxy" ]; then
+    echo "CAUTION! Only work for user different than root user and is not enabled for proxy devices"
+    exit 1
+else
+    N=47 # This number should be the same as the number of lines that nvidia-smi shows before the GPU information
+    PIDS=$(nvidia-smi | tail -n "+$N" | head -n -1 | sed "s/\s\s*/ /g" | cut -d' ' -f5)
+    GPUS=$(nvidia-smi | tail -n "+$N" | head -n -1 | sed "s/\s\s*/ /g" | cut -d' ' -f2)
+    MEM=$(nvidia-smi  | tail -n "+$N" | head -n -1 | sed "s/\s\s*/ /g" | cut -d' ' -f8)
+
+    PIDS_ARR=($PIDS)
+    GPUS_ARR=($GPUS)
+    MEM_ARR=($MEM)
+
+    len=${#PIDS_ARR[@]}
+    ((len-=1))
+    contador=0
+    if [ $len -ne 0 ]; then
+        echo "Listing the users currently using GPUs"
+        printf "%s\t %s\t %20s\t %s\n" "Proceso" "GPU ID" "Usuario" "Memoria usada"
+        echo "_______________________________________________"
+        for pid in $(seq 0 $len)
+        do
+            user=$(ps -p ${PIDS_ARR[$pid]} -o user | tail -n +2)
+            printf "%s\t %s\t %20s\t %s\n" ${PIDS_ARR[$pid]} ${GPUS_ARR[$pid]} $user ${MEM_ARR[$pid]}
+        done
+    else
+        echo "No users are currently using GPUs"
+    fi
+    exit 0
+fi
