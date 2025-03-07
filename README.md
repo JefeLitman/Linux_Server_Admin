@@ -10,7 +10,7 @@ Repository containing documentation, scripts and other elements I consider eleme
 * [x] Finish the `remove_docker` script.
 * [x] Upgrade `new_user` script to install docker directly instead of accessing the newly created user.
 * [x] Upgrade `new_user` and `rm_user_dir` to update `/etc/fstab` entries.
-* [ ] Fix the check_gpus command to correctly display the current process using the GPUs.
+* [x] Fix the check_gpus command to correctly display the current process using the GPUs.
 * [ ] Upload the guideline documents to the repo.
 * [ ] Finish the redaction of guideline documents.
 
