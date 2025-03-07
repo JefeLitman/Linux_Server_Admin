@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Version 1.2
-# Made by: Santiago Duitama & Edgar RP
-# Updated: 2025_02_19 (AAAA_MM_DD)
+# Version 1.3
+# Made by: Edgar RP
+# Updated: 2025_03_07 (AAAA_MM_DD)
 # Script to list the current users using a GPU and the memory occupied
 
 set -e # To avoid any non-zero output to stop the script
@@ -14,26 +14,25 @@ if [ "$EUID" -eq 0 ] || [ "$DEV_LOC" == "proxy" ]; then
     echo "CAUTION! Only work for user different than root user and is not enabled for proxy devices"
     exit 1
 else
-    N=47 # This number should be the same as the number of lines that nvidia-smi shows before the GPU information
-    PIDS=$(nvidia-smi | tail -n "+$N" | head -n -1 | sed "s/\s\s*/ /g" | cut -d' ' -f5)
-    GPUS=$(nvidia-smi | tail -n "+$N" | head -n -1 | sed "s/\s\s*/ /g" | cut -d' ' -f2)
-    MEM=$(nvidia-smi  | tail -n "+$N" | head -n -1 | sed "s/\s\s*/ /g" | cut -d' ' -f8)
+    # Get the current tasks running in the GPUs
+    TASKS=($(nvidia-smi --query-compute-apps=pid,gpu_bus_id,used_memory --format=csv,noheader,nounits))
+    N_TASKS=${#TASKS[@]}
 
-    PIDS_ARR=($PIDS)
-    GPUS_ARR=($GPUS)
-    MEM_ARR=($MEM)
-
-    len=${#PIDS_ARR[@]}
-    ((len-=1))
-    contador=0
-    if [ $len -ne 0 ]; then
+    if [ $N_TASKS -ne 0 ]; then
         echo "Listing the users currently using GPUs"
-        printf "%s\t %s\t %20s\t %s\n" "Proceso" "GPU ID" "Usuario" "Memoria usada"
-        echo "_______________________________________________"
-        for pid in $(seq 0 $len)
+        echo ""
+        echo "========================================================"
+        printf " %-10s %-3s  %-20s %-8s\n" "Memory" "GPU" "User" "Memory"
+        echo "========================================================"
+        for ((i=0 ; i<$N_TASKS ; i=i+3))
         do
-            user=$(ps -p ${PIDS_ARR[$pid]} -o user | tail -n +2)
-            printf "%s\t %s\t %20s\t %s\n" ${PIDS_ARR[$pid]} ${GPUS_ARR[$pid]} $user ${MEM_ARR[$pid]}
+            pid=$(echo ${TASKS[$i]} | cut -d ',' -f1)
+            gpu=$(echo ${TASKS[(($i+1))]} | cut -d ',' -f1)
+            memory=$(echo ${TASKS[(($i+2))]} | cut -d ',' -f1)
+            
+            user=$(ps -p $pid -o user | tail -n +2)
+            gpu_id=($(nvidia-smi -i $gpu --query-gpu=index --format=csv,noheader,nounits))
+            printf " %-10s %-3s  %-20s %-8s\n" $pid ${gpu_id[0]} $user "$memory MB"
         done
     else
         echo "No users are currently using GPUs"
