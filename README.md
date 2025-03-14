@@ -12,7 +12,8 @@ Repository containing documentation, scripts and other elements I consider eleme
 * [ ] Upgrade `new_user` and `rm_user_dir` to update `/etc/fstab` entries.
 * [ ] Upload the guideline documents to the repo.
 * [ ] Finish the redaction of guideline documents.
+* [ ] Document regarding the cron task of scrubbing each month and make it default at false, similarly with trim. (ls -laR /etc/cron* to find the cron tasks)
 
 ## About this file
-* Version: 0.1.1
+* Version: 0.1.2
 * Made by: Edgar RP
