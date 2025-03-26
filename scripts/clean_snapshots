@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Version 1.2
+# Version 1.3
 # Made by: Edgar RP
-# Updated: 2025_02_19 (AAAA_MM_DD)
+# Updated: 2025_03_26 (AAAA_MM_DD)
 # Script to remove all the zfs snapshots (except the last one) in the system
 
 set -e # To avoid any non-zero output to stop the script
@@ -10,9 +10,10 @@ DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' 
 _check_dev "$DEV_LOC" # Checking if the device type is correctly set
 
 #To use this command, it should look like: clean_snapshots
-if [ "$EUID" -ne 0 ]; then
-    echo "usage: clean_snapshots"
+if [ -z "$1" ] || [ "$EUID" -ne 0 ]; then
+    echo "usage: clean_snapshots <rpool_userdata_dataset>"
     echo "CAUTION! Only work for root user"
+    echo "  <rpool_userdata_dataset> - The name of zfs dataset with prefix rpool/USERDATA/root_xxxxxx where the snapshots are stored (e.g. rpool/USERDATA/root_as2xe3)"
     exit 1
 else
     echo "Listing the snapshots in the zfs system:"
@@ -29,6 +30,7 @@ else
         do
             echo "Removing the ${SNAPS_ARR[$snap_id]} snapshots in the system"
             zsysctl state remove --system ${SNAPS_ARR[$snap_id]}
+            zfs destroy -v $1@autozsys_${SNAPS_ARR[$snap_id]}
         done
         echo ""
         echo "The snapshots were removed successfully"
