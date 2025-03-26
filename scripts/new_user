@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Version 1.0.1
+# Version 1.1
 # Made by: Edgar RP
-# Updated: 2025_02_13 (AAAA_MM_DD)
+# Updated: 2025_03_26 (AAAA_MM_DD)
 # Script to add a new user to the device with all the permissions and folders and default configurations
 
 set -e # To avoid any non-zero output to stop the script
@@ -34,6 +34,8 @@ else
         echo "Creating home folder of user $2 and mounting the ZFS Volume on it"
         mkdir -v /home/$2
         mount -v /dev/zvol/$1/$2_volume /home/$2
+        disk_uuid=$(blkid /dev/zvol/$1/$2_volume | cut -d" " -f2 | cut -d'"' -f2)
+        echo "UUID=${disk_uuid} /home/$2 ext2 defaults 0 2"
     fi
     echo "Creating the username $2..."
     adduser $2
@@ -68,7 +70,7 @@ else
         echo ""
         blkid /dev/zvol/$1/$2_volume
         echo ""
-        echo "Success, now add the volume of user $2 into /etc/fstab to let the user access to the device!"
+        echo "Success, now check into /etc/fstab if the user volume $2 is correctly defined and report the user that can access to the device!"
     fi
     exit 0
 fi
