@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.2
+# Version 1.2.1
 # Made by: Edgar RP
 # Updated: 2025_03_26 (AAAA_MM_DD)
 # Script to add a new user to the device with all the permissions and folders and default configurations
@@ -38,7 +38,7 @@ else
         mkdir -v /home/$2
         mount -v /dev/zvol/$1/$2_volume /home/$2
         disk_uuid=$(blkid /dev/zvol/$1/$2_volume | cut -d" " -f2 | cut -d'"' -f2)
-        echo "UUID=${disk_uuid} /home/$2 ext2 defaults 0 2"
+        echo "UUID=${disk_uuid} /home/$2 ext2 defaults 0 2" >> /etc/fstab
     fi
     if [ "$IS_BIVL2AB" == "1" ] && [ "$DEV_LOC" == "workstation" ]; then
         echo "Creating the /home/Data/$2 folder for the user"
