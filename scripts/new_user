@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.1
+# Version 1.2
 # Made by: Edgar RP
 # Updated: 2025_03_26 (AAAA_MM_DD)
 # Script to add a new user to the device with all the permissions and folders and default configurations
@@ -8,6 +8,9 @@
 set -e # To avoid any non-zero output to stop the script
 DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
 _check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+# Variable for BIVL2ab computers only for extra configs
+IS_BIVL2AB=$(hostname | grep -ic "bivl2ab")
 
 #To use this command, it should look like: new_user <zfs_pool> <username> <size>
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ "$EUID" -ne 0 ]; then
@@ -36,6 +39,11 @@ else
         mount -v /dev/zvol/$1/$2_volume /home/$2
         disk_uuid=$(blkid /dev/zvol/$1/$2_volume | cut -d" " -f2 | cut -d'"' -f2)
         echo "UUID=${disk_uuid} /home/$2 ext2 defaults 0 2"
+    fi
+    if [ "$IS_BIVL2AB" == "1" ] && [ "$DEV_LOC" == "workstation" ]; then
+        echo "Creating the /home/Data/$2 folder for the user"
+        mkdir -v -m 700 /home/Data/$2
+        chown -v $2:$2 /home/Data/$2
     fi
     echo "Creating the username $2..."
     adduser $2
