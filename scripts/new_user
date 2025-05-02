@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 1.2.1
+# Version 1.2.2
 # Made by: Edgar RP
 # Updated: 2025_03_26 (AAAA_MM_DD)
 # Script to add a new user to the device with all the permissions and folders and default configurations
@@ -43,7 +43,6 @@ else
     if [ "$IS_BIVL2AB" == "1" ] && [ "$DEV_LOC" == "workstation" ]; then
         echo "Creating the /home/Data/$2 folder for the user"
         mkdir -v -m 700 /home/Data/$2
-        chown -v $2:$2 /home/Data/$2
     fi
     echo "Creating the username $2..."
     adduser $2
@@ -55,6 +54,7 @@ else
     chmod -Rv 700 /home/$2/.ssh
     echo "Setting permission to the user in their home folder and files"
     chown -Rv $2:$2 /home/$2
+    chown -v $2:$2 /home/Data/$2
     if [ "$DEV_LOC" == "proxy" ]; then
         echo "Success, now modify sshd_config file to enable ssh-key only access for user $2"
     fi
