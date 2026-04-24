@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Version 1.3
-# Made by: Edgar RP
+# Made by: Santiago Duitama & Edgar RP
 # Updated: 2025_03_07 (AAAA_MM_DD)
 # Script to list the current users using a GPU and the memory occupied
 
