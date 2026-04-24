@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 2026.04.24
+# Version 2026.04.24.1
 # Made by: Josue Rodriguez de la Rosa & Edgar RP
 # Script to enable a multi user environment in a single shared user organizing files into Users folder.
 
@@ -38,7 +38,7 @@ AUDIT_DIR="$REAL_HOME/.multiuser_audit"                    # audit logs (sticky 
 AUDIT_LOG="$AUDIT_DIR/sessions.csv"             # persistent session log (csv)
 
 mkdir -p "$BASE_DIR"
-mkdir -p "$STATE_DIR" "$AUDIT_DIR"
+mkdir -p -m 755 "$STATE_DIR" "$AUDIT_DIR"
 
 # =========================
 # Helpers
@@ -57,8 +57,8 @@ sanitize_name() {
 ensure_users_file() {
   if [[ ! -f "$USERS_FILE" ]]; then
     cat > "$USERS_FILE" <<EOF
-# Lista de identidades para $LANE (una por línea).
-# Se actualiza cuando agregas un nombre nuevo desde el menú.
+# Identify file for $LANE (one per line).
+# It updated when you add a new user from the menu.
 EOF
   fi
 }
@@ -234,7 +234,7 @@ register_session() {
   local start_epoch
   start_epoch="$(date +%s)"
 
-  SESSION_FILE="$STATE_DIR/${LANE}.${MODE,,}.$$\.session"
+  SESSION_FILE="$STATE_DIR/${LANE}.${MODE,,}.$$.session"
   echo "${LANE}|${MODE}|${NAME}|$$|${start_epoch}|${USER_DIR}" > "$SESSION_FILE"
 }
 
@@ -270,16 +270,6 @@ enter_shell_preserve_lane_env() {
   echo "Tip Git: Your commit identity if on \$HOME/.gitconfig"
   echo
 
-  # 1) Cargar entorno del HOME REAL del carril (docker rootless, módulos, etc.)
-  if [[ -f "$REAL_HOME/.bashrc" ]]; then
-    # shellcheck disable=SC1090
-    source "$REAL_HOME/.bashrc"
-  elif [[ -f "$REAL_HOME/.profile" ]]; then
-    # shellcheck disable=SC1090
-    source "$REAL_HOME/.profile"
-  fi
-
-  # 2) Forzar variables necesarias para Docker rootless
   UID_NUM="$(id -u)"
 
   if [[ -z "${XDG_RUNTIME_DIR:-}" ]] && [[ -d "/run/user/$UID_NUM" ]]; then
@@ -291,7 +281,7 @@ enter_shell_preserve_lane_env() {
   fi
 
   # 3) Entrar a shell interactiva (NO login)
-  exec "${SHELL:-/bin/bash}" --rcfile "$REAL_HOME/.bashrc" -i
+  exec "${SHELL:-/bin/bash}" --rcfile <(head -n -1 "$REAL_HOME/.bashrc") -i
 }
 # =========================
 # Main
