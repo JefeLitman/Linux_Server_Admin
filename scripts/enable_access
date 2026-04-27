@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Version 2026.04.27
+# Made by: Edgar RP
+# Script to add enable a person access to shared user by creating the ssh keys with given configured parameters.
+
+set -e # To avoid any non-zero output to stop the script
+DEV_LOC='DEVICE_TYPE' # Device type can only be a string with 'server', 'proxy' or 'workstation' values
+_check_dev "$DEV_LOC" # Checking if the device type is correctly set
+
+# Variable for BIVL2ab computers only for extra configs
+IS_BIVL2AB=$(hostname | grep -ic "bivl2ab")
+
+#To use this command, it should look like: enable_access <machine_user> <username>
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ "$EUID" -ne 0 ]; then
+    echo "usage: enable_access <machine_user> <username> <password>"
+    echo "CAUTION! Only work for root user"
+    echo "  <machine_user> -  The machine or system user in the machine that is shared for multiple users."
+    echo "  <username> -  The name of the person who will access to this shared user."
+    echo "  <password> -  The password for the person who will access to this user."
+    exit 1
+else
+    # Create a ssh key with root user
+    echo "Creating the ssh key for the user with the given password..."
+    ssh-keygen -t ed25519 -f "/home/$1/.ssh/keys/id_$2_$1" -C "$2_$1@$(hostname)" -N "$3"
+    chown -v $1:$1 "/home/$1/.ssh/keys/id_$2_$1"
+    chown -v $1:$1 "/home/$1/.ssh/keys/id_$2_$1.pub"
+    cat "/home/$1/.ssh/keys/id_$2_$1.pub" >> /home/$1/.ssh/authorized_keys
+    echo "Storing the keys in admin user for download and sharing the keys..."
+    rsync -v "/home/$1/.ssh/keys/id_$2_$1" /home/admin_bivl2ab/keys/
+    chown -v admin_bivl2ab:admin_bivl2ab "/home/admin_bivl2ab/keys/id_$2_$1"
+    echo "Finished, now download the keys and share with the person."
+    exit 0
+fi
