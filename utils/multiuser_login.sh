@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Version 2026.04.27
+# Version 2026.04.27.1
 # Made by: Josue Rodriguez de la Rosa & Edgar RP
 # This script allows a user to select their respective username from a shared user directory and export the $HOME environment variable accordingly. To enable its functionality you should have a shared user for multiple people and add `souce <path_2_script>/multiuser_login.sh` into user bashrc.
 # TODO: Fix errors regarding the gitconfig and .ssh folder tring to be executed.
@@ -39,7 +39,7 @@ main() {
     echo "============================================================"
 
     # Display the selection menu
-    PS3='Who are you? '
+    PS3='Who are you? (Pick a number) '
     select USERNAME in "Add a new user" "${USERNAMES[@]}"; do
         # The selected value is stored in $NAME (the last argument passed to select)
         SELECTED_USER="$USERNAME"
