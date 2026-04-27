@@ -1,197 +1,107 @@
 #!/bin/bash
 
-# Version 2026.04.24.2
+# Version 2026.04.27
 # Made by: Josue Rodriguez de la Rosa & Edgar RP
-# Script to enable a multi user environment in a single shared user organizing files into Users folder.
+# This script allows a user to select their respective username from a shared user directory and export the $HOME environment variable accordingly. To enable its functionality you should have a shared user for multiple people and add `souce <path_2_script>/multiuser_login.sh` into user bashrc.
+# TODO: Fix errors regarding the gitconfig and .ssh folder tring to be executed.
 
-# --- Configuration ---
-USER_DIR="$HOME/Users"
-
-# Function to sanitize a username
-# Converts to lowercase and removes characters that are invalid for filenames.
+# Function to sanitize username
 sanitize_username() {
-    local username="$1"
+    local user_name="$1"
     # Convert to lowercase
-    local sanitized=$(echo "$username" | tr '[:upper:]' '[:lower:]')
-
+    local sanitized=$(echo "$user_name" | tr '[:upper:]' '[:lower:]')
     # Remove characters that are invalid for folder names (keeping only alphanumeric, -, _, .)
     sanitized=$(echo "$sanitized" | sed -E 's/[^a-z0-9._-]+//g')
-
-    # Handle cases where sanitization results in an empty string
-    if [ -z "$sanitized" ]; then
-        echo ""
-        return 1
-    fi
-    echo "$sanitized"
+    echo $sanitized
 }
 
-# Function to ensure the necessary user directory structure exists
-setup_user_environment() {
-    if [ ! -d "$USER_DIR" ]; then
-        echo "Creating central user directory at $USER_DIR..."
-        mkdir -p "$USER_DIR"
+# --- Configurations ---
+SHARED_USER="$(whoami)"
+USERS_DIR="$HOME/Users"
+HOST="$(hostname -s 2>/dev/null || hostname)"
+if [ ! -d "$USERS_DIR" ]; then
+    echo "Users directory not found at $USERS_DIR. Creating it now..."
+    mkdir -p "$USERS_DIR"
+    if [ $? -ne 0 ]; then
+        echo "Error: Could not create $USERS_DIR. Exiting."
+        exit 1
     fi
-}
+fi
+# Get all directories, exclude system directories, and store them in an array
+USERNAMES=($(find "$USERS_DIR" -mindepth 1 -maxdepth 1 -type d -not -wholename "$USERS_DIR/." -not -wholename "$USERS_DIR/.." | sort))
+# Clean up the names by stripping the full path prefix
+USERNAMES=($(for dir in "${USERNAMES[@]}"; do basename "$dir"; done))
 
-# Function to get the list of available users from the system
-get_available_users() {
-    # List directories under $HOME/Users
-    find "$USER_DIR" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort
-}
-
-# Function to create and initialize a new user account folder
-create_new_user() {
-    local input_username="$1"
-    local sanitized_username
-    local user_path
-
-    # 1. Sanitize the input name
-    sanitized_username=$(sanitize_username "$input_username")
-
-    if [ -z "$sanitized_username" ]; then
-        echo "Error: The provided username '$input_username' is invalid after sanitization. Please use only letters, numbers, dashes, underscores, and periods."
-        return 1
-    fi
-
-    user_path="$USER_DIR/$sanitized_username"
-
-    if [ -d "$user_path" ]; then
-        echo "Error: User directory '$user_path' already exists. Please use the menu to select it."
-        return 1
-    fi
-
-    echo -e "\n======================================================="
-    echo "Creating new user directory for: $sanitized_username"
-    echo "======================================================="
-
-    # 2. Create the directory
-    if mkdir -p "$user_path"; then
-        echo "Successfully created user directory: $user_path"
-        return 0
-    else
-        echo "Error: Failed to create user directory. Check permissions."
-        return 1
-    fi
-}
-
-# Function to display the interactive user menu
-display_menu() {
-    echo -e "\n======================================================="
-    echo "User Selection Menu"
-    echo "======================================================="
-
-    local user_list=()
-    local index=1
-    local user
-
-    # Fetch the list of available users
-    readarray -t user_list < <(get_available_users)
-
-    if [ ${#user_list[@]} -eq 0 ]; then
-        return 2 # Return code 2 indicates no users found. No users found in $USER_DIR. Run the script again to create a new user.
-    fi
-
-    echo "Please select a user from the list below by entering the number:"
-
-    for user in "${user_list[@]}"; do
-        echo "$index) $user"
-        index=$((index + 1))
-    done
-    echo "-------------------------------------------------------"
-
-    # Prompt the user for input
-    read -rp "Enter selection number (1-${#user_list[@]})): " selection
-
-    # Validate input
-    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt ${#user_list[@]} ]; then
-        echo "Error: Invalid selection number. Please try again."
-        return 1
-    fi
-
-    # Return the selected username (which is 1-indexed)
-    local selected_index=$((selection - 1))
-    echo "${user_list[selected_index]}"
-    return 0
-}
-
-# Function to switch the user's environment
-# Takes the sanitized username as input.
-switch_user() {
-    local username="$1"
-    local user_path="$USER_DIR/$username"
-
-    if [ ! -d "$user_path" ]; then
-        echo "Error: User directory '$user_path' does not exist. Cannot switch user."
-        return 1
-    fi
-
-    echo -e "\n======================================================="
-    echo "Attempting to switch user environment to: $username"
-    echo "======================================================="
-
-    # CRITICAL: Update the environment variable for the current shell process.
-    export HOME="$user_path"
-
-    # Also update PATH, assuming new users might have their binaries here
-    export PATH="$user_path/bin:$PATH"
-
-    echo "SUCCESS: HOME variable has been updated for this session."
-    echo "======================================================"
-    echo "The new environment variables are set. Your current working directory is: $(pwd)"
-    echo "To verify, run 'echo \$HOME' or 'pwd' in your next command."
-    return 0
-}
-
-# Main execution block
 main() {
-    # 1. Setup directory structure
-    setup_user_environment
+    # Banner welcome screen
+    echo "============================================================"
+    echo "$SHARED_USER Login | Host: $HOST"
+    echo "============================================================"
 
-    # 2. Display menu and get user selection
-    echo "--- Running Multi-User Login Script ---"
-    local SELECTED_USER=$(display_menu)
-    local return_code=$?
-    echo "display_menu return code $return_code"
+    # Display the selection menu
+    PS3='Who are you? '
+    select USERNAME in "Add a new user" "${USERNAMES[@]}"; do
+        # The selected value is stored in $NAME (the last argument passed to select)
+        SELECTED_USER="$USERNAME"
+        if [ "$SELECTED_USER" == "Add a new user" ]; then
+            read -p "Please enter the desired new username: " NEW_USERNAME_INPUT
+            # Sanitize the input
+            SANITIZED_USERNAME=$(sanitize_username "$NEW_USERNAME_INPUT")
 
-    # 3. Handle user selection failure or new user creation
-    if [ $return_code -eq 2 ]; then
-        # No users found - prompt for creation
-        echo -e "\n--- No users found. Please create one! ---"
-        read -rp "Please enter the desired new username: " NEW_USERNAME
-
-        if [ -n "$NEW_USERNAME" ]; then
-            # Attempt to create the user directory
-            NEW_USER_RESULT=$(create_new_user "$NEW_USERNAME")
-            local create_return_code=$?
-
-            if [ $create_return_code -eq 0 ]; then
-                # If creation was successful, proceed to switch user
-                echo "User directory created. Now switching environment..."
-                switch_user "$sanitized_username" # Note: Using sanitized_username from the function scope
-                # Re-evaluate the return code based on switch_user success
-                local switch_return_code=$?
-                if [ $switch_return_code -ne 0 ]; then
-                    echo "FATAL: Failed to switch user after successful creation. Please check permissions."
-                    return 1
-                fi
-            else
-                echo "Failed to create user directory. Cannot proceed."
-                return 1
+            if [ -z "$SANITIZED_USERNAME" ]; then
+                echo "Error: Username cannot be empty or contains invalid characters (only a-z 0-9 . _ -). Exiting."
+                exit 1
             fi
-        else
-            echo "User creation cancelled. Exiting."
-            return 1
+
+            # Create the directory for the new user
+            NEW_USER_DIR="$USERS_DIR/$SANITIZED_USERNAME"
+            if [ -d "$NEW_USER_DIR" ]; then
+                echo "Error: Directory $NEW_USER_DIR already exists. Please try another creating another user or select that."
+                # Re-run selection to allow user to pick the existing name
+                # (A proper implementation would loop until success, but for now, we exit)
+                exit 1
+            fi
+
+            echo "Your folder data will be: $NEW_USER_DIR"
+            echo "(Note: Your username always be lowercase and without blank spaces.)"
+            mkdir -p "$NEW_USER_DIR"
+            if [ $? -ne 0 ]; then
+                echo "Error: Could not create user directory $NEW_USER_DIR. Exiting."
+                exit 1
+            fi
+            SELECTED_USER="$SANITIZED_USERNAME"
         fi
+        # After selecting or creating a user, export the $HOME environment variable only when valid options are selected
+        if [[ -d "$USERS_DIR/$SELECTED_USER" && -n "$SELECTED_USER" ]]; then
+            # Creating required files and folders for the user
+            if [ ! -d "$USERS_DIR/$SELECTED_USER/.ssh" ]; then
+                echo "Creating $SELECTED_USER ssh folder..."
+                mkdir -p -m 700 "$USERS_DIR/$SELECTED_USER/.ssh"
+            fi
+            if [[ ! -f "$USERS_DIR/$SELECTED_USER/.gitconfig" ]]; then
+                echo "Creating $SELECTED_USER gitconfig template file..."
+                install -m 755 /dev/null "$USERS_DIR/$SELECTED_USER/.gitconfig"
+                echo -e "[user]\n    name = $SELECTED_USER\n    email = $SELECTED_USER@example.invalid\n" > "$USERS_DIR/$SELECTED_USER/.gitconfig"
+            fi
+            # Helpful note
+            if [[ ! -f "$USERS_DIR/$SELECTED_USER/README.txt" ]]; then
+                echo "Creating $SELECTED_USER recommendations file..."
+                install -m 755 /dev/null "$USERS_DIR/$SELECTED_USER/README.txt"
+                cat > "$USERS_DIR/$SELECTED_USER/README.txt" <<EOF
+Personal workspace for: $SELECTED_USER
+User: $SHARED_USER
 
-    elif [ $return_code -eq 0 ]; then
-        # User selected successfully
-        switch_user "$SELECTED_USER"
-    else
-        # Other errors (e.g., invalid selection)
-        echo "Exiting script due to user selection failure or directory error."
-        return 1
-    fi
+Recommended practices:
+- Keep your code sync with a Git service (Github, Gitlab, etc) and do pull/push frequently. The data can be lost sometimes due to disks failure.
+- Your commit identification is defined by default in `$USERS_DIR/$SELECTED_USER/.gitconfig` with `user.name=$SELECTED_USER` and `user.email=$SELECTED_USER@example.invalid`. You can modify the file with valid parameters.
+- Configure your SSH keys for git services in `$USERS_DIR/$SELECTED_USER/.ssh`.
+EOF
+            fi
+
+            export HOME="$USERS_DIR/$SELECTED_USER"
+            echo "Successfully set HOME to: $HOME"
+            break
+        fi
+    done
 }
-
-# Execute the main function
-main "$@"
+main
